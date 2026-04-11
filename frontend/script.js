@@ -55,3 +55,18 @@ function deleteEmployee(index) {
 
 // Initial display
 displayEmployees();
+function searchEmployee() {
+    const input = document.getElementById("searchInput").value.toLowerCase();
+    const rows = document.querySelectorAll("#employeeTable tr");
+
+    rows.forEach(row => {
+        const id = row.cells[0].textContent.toLowerCase();
+        const name = row.cells[1].textContent.toLowerCase();
+
+        if (id.includes(input) || name.includes(input)) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+}
