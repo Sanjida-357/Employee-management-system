@@ -1,65 +1,42 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMS Dashboard</title>
+    <title>EMS Salary Slip Generator</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- Header -->
+    <div class="header">
+        <h2>Employee Salary Slip Generator</h2>
+    </div>
 
-<div class="header">
-    <h2>Employee Management System Dashboard</h2>
-</div>
+    <div class="container">
+        <div class="card">
+            <h3>Enter Employee Details</h3>
 
-<div class="container">
+            <form id="salaryForm">
+                <input type="number" id="empID" placeholder="Employee ID" required>
+                <input type="text" id="name" placeholder="Employee Name" required>
+                <input type="number" id="daysPresent" placeholder="Days Present" required>
+                <input type="number" id="totalDays" placeholder="Total Working Days" required>
+                <input type="number" id="leaveTaken" placeholder="Leave Taken" required>
+                <input type="number" id="baseSalary" placeholder="Base Salary" required>
+                <input type="number" id="overtimeHours" placeholder="Overtime Hours" required>
+                <input type="number" id="bonus" placeholder="Bonus" required>
+                <button type="submit">Generate Salary Slip</button>
+            </form>
+        </div>
 
-```
-<!-- Form Section -->
-<div class="card">
-    <h3>Add Employee</h3>
-    <form id="employeeForm">
-        <input type="text" id="empId" placeholder="Employee ID" required>
-        <input type="text" id="name" placeholder="Name" required>
-        <input type="text" id="position" placeholder="Position" required>
-        <input type="number" id="salary" placeholder="Salary" required>
-        <input type="number" id="attendance" placeholder="Attendance">
-        <input type="number" id="leave" placeholder="Leave Days">
-        <button type="submit">Add Employee</button>
-    </form>
-</div>
+        <div class="card">
+            <h3>Salary Slip</h3>
+            <div id="result">
+                <p>No salary slip generated yet.</p>
+            </div>
+        </div>
+    </div>
 
-<!-- Table Section -->
-<div class="card">
-    <h3>Employee Records</h3>
-    <input type="text" id="searchInput" placeholder="Search by ID or Name..." onkeyup="searchEmployee()">
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Position</th>
-                <th>Salary</th>
-                <th>Attendance</th>
-                <th>Leave</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="employeeTable">
-            <!-- Dynamic rows will come here -->
-        </tbody>
-    </table>
-</div>
-```
-
-</div>
-
-<!-- Link JS -->
-
-<script src="script.js"></script>
-
+    <script src="script.js"></script>
 </body>
 </html>

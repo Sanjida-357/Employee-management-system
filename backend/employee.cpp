@@ -109,16 +109,15 @@ public:
     }
 };
 
-int main() {
-    // Temporary test (can remove later when connecting frontend)
-    Salary emp;
+// int main() {
+//     Salary emp;
 
-    emp.setBasicInfo(101, "Rahul");
-    emp.setAttendance(20, 22);
-    emp.setLeave(6);
-    emp.setSalaryDetails(30000, 5, 2000);
+//     emp.setBasicInfo(101, "Rahul");
+//     emp.setAttendance(20, 22);
+//     emp.setLeave(6);
+//     emp.setSalaryDetails(30000, 5, 2000);
 
-    emp.displaySalarySlip();
+//     emp.displaySalarySlip();
 
-    return 0;
-}
+//     return 0;
+// }

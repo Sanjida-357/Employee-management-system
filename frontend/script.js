@@ -1,72 +1,44 @@
-const form = document.getElementById("employeeForm");
-const table = document.getElementById("employeeTable");
+const form = document.getElementById("salaryForm");
+const result = document.getElementById("result");
 
-// Load existing data
-let employees = JSON.parse(localStorage.getItem("employees")) || [];
-
-// Display employees
-function displayEmployees() {
-    table.innerHTML = "";
-
-    employees.forEach((emp, index) => {
-        let row = `
-        <tr>
-            <td>${emp.id}</td>
-            <td>${emp.name}</td>
-            <td>${emp.position}</td>
-            <td>${emp.salary}</td>
-            <td>${emp.attendance}</td>
-            <td>${emp.leave}</td>
-            <td>
-                <button class="delete" onclick="deleteEmployee(${index})">Delete</button>
-            </td>
-        </tr>
-        `;
-        table.innerHTML += row;
-    });
-}
-
-// Add employee
-form.addEventListener("submit", function(e) {
+form.addEventListener("submit", async function (e) {
     e.preventDefault();
 
-    const employee = {
-        id: document.getElementById("empId").value,
+    const data = {
+        empID: parseInt(document.getElementById("empID").value),
         name: document.getElementById("name").value,
-        position: document.getElementById("position").value,
-        salary: document.getElementById("salary").value,
-        attendance: document.getElementById("attendance").value || 0,
-        leave: document.getElementById("leave").value || 0
+        daysPresent: parseInt(document.getElementById("daysPresent").value),
+        totalDays: parseInt(document.getElementById("totalDays").value),
+        leaveTaken: parseInt(document.getElementById("leaveTaken").value),
+        baseSalary: parseFloat(document.getElementById("baseSalary").value),
+        overtimeHours: parseFloat(document.getElementById("overtimeHours").value),
+        bonus: parseFloat(document.getElementById("bonus").value)
     };
 
-    employees.push(employee);
-    localStorage.setItem("employees", JSON.stringify(employees));
+    try {
+        const response = await fetch("http://localhost:8080/calculate", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        });
 
-    form.reset();
-    displayEmployees();
+        const res = await response.json();
+
+        result.innerHTML = `
+            <p><strong>Employee ID:</strong> ${res.empID}</p>
+            <p><strong>Name:</strong> ${res.name}</p>
+            <p><strong>Overtime Pay:</strong> ${res.overtimePay.toFixed(2)}</p>
+            <p><strong>Gross Salary:</strong> ${res.grossSalary.toFixed(2)}</p>
+            <p><strong>Tax:</strong> ${res.tax.toFixed(2)}</p>
+            <p><strong>Insurance:</strong> ${res.insurance.toFixed(2)}</p>
+            <p><strong>Pension:</strong> ${res.pension.toFixed(2)}</p>
+            <p><strong>Leave Deduction:</strong> ${res.leaveDeduction.toFixed(2)}</p>
+            <p><strong>Attendance:</strong> ${res.attendance.toFixed(2)}%</p>
+            <p><strong>Net Salary:</strong> ${res.netSalary.toFixed(2)}</p>
+        `;
+    } catch (err) {
+        result.innerHTML = `<p>❌ Error connecting to backend</p>`;
+    }
 });
-
-// Delete employee
-function deleteEmployee(index) {
-    employees.splice(index, 1);
-    localStorage.setItem("employees", JSON.stringify(employees));
-    displayEmployees();
-}
-
-// Initial display
-displayEmployees();
-function searchEmployee() {
-    const input = document.getElementById("searchInput").value.toLowerCase();
-    const rows = document.querySelectorAll("#employeeTable tr");
-
-    rows.forEach(row => {
-        const id = row.cells[0].textContent.toLowerCase();
-        const name = row.cells[1].textContent.toLowerCase();
-
-        if (id.includes(input) || name.includes(input)) {
-            row.style.display = "";
-        } else {
-            row.style.display = "none";
-        }
-    });
-}
