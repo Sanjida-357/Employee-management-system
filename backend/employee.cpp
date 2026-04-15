@@ -1,123 +1,210 @@
+#ifndef EMPLOYEE_CPP
+#define EMPLOYEE_CPP
+
 #include <iostream>
 #include <string>
+#include <stdexcept>
 using namespace std;
 
+// ================= CUSTOM EXCEPTION =================
+class InvalidInputException : public exception {
+private:
+    string message;
+
+public:
+    InvalidInputException(const string& msg) : message(msg) {}
+
+    const char* what() const noexcept override {
+        return message.c_str();
+    }
+};
+
+// ================= TEMPLATE UTILITY FUNCTIONS =================
+template <typename T>
+T maxValue(T a, T b) {
+    return (a > b) ? a : b;
+}
+
+template <typename T>
+T minValue(T a, T b) {
+    return (a < b) ? a : b;
+}
+
+// ================= ABSTRACT BASE CLASS =================
 class Employee {
 protected:
     int empID;
     string name;
+    string department;
+    string employeeType;
+    double baseSalary;
 
 public:
-    void setBasicInfo(int id, string empName) {
+    Employee() {
+        empID = 0;
+        name = "";
+        department = "";
+        employeeType = "";
+        baseSalary = 0.0;
+    }
+
+    Employee(int id, string n, string dept, string type, double salary) {
+        if (id <= 0) throw InvalidInputException("Employee ID must be positive.");
+        if (n.empty()) throw InvalidInputException("Name cannot be empty.");
+        if (dept.empty()) throw InvalidInputException("Department cannot be empty.");
+        if (salary < 0) throw InvalidInputException("Base salary cannot be negative.");
+
         empID = id;
-        name = empName;
+        name = n;
+        department = dept;
+        employeeType = type;
+        baseSalary = salary;
     }
 
-    int getEmpID() { return empID; }
-    string getName() { return name; }
+    virtual ~Employee() {}
+
+    // Setters
+    void setEmpID(int id) {
+        if (id <= 0) throw InvalidInputException("Employee ID must be positive.");
+        empID = id;
+    }
+
+    void setName(string n) {
+        if (n.empty()) throw InvalidInputException("Name cannot be empty.");
+        name = n;
+    }
+
+    void setDepartment(string dept) {
+        if (dept.empty()) throw InvalidInputException("Department cannot be empty.");
+        department = dept;
+    }
+
+    void setEmployeeType(string type) {
+        if (type.empty()) throw InvalidInputException("Employee type cannot be empty.");
+        employeeType = type;
+    }
+
+    // Function overloading
+    void setBaseSalary(double salary) {
+        if (salary < 0) throw InvalidInputException("Base salary cannot be negative.");
+        baseSalary = salary;
+    }
+
+    void setBaseSalary(int salary) {
+        if (salary < 0) throw InvalidInputException("Base salary cannot be negative.");
+        baseSalary = static_cast<double>(salary);
+    }
+
+    // Getters
+    int getEmpID() const {
+        return empID;
+    }
+
+    string getName() const {
+        return name;
+    }
+
+    string getDepartment() const {
+        return department;
+    }
+
+    string getEmployeeType() const {
+        return employeeType;
+    }
+
+    double getBaseSalary() const {
+        return baseSalary;
+    }
+
+    // Pure virtual functions for polymorphism
+    virtual double calculateBasicPay() const = 0;
+    virtual double getTaxRate() const = 0;
+    virtual double getInsuranceRate() const = 0;
+    virtual double getPensionRate() const = 0;
 };
 
-class Attendance {
-protected:
-    int daysPresent, totalDays;
-
+// ================= DERIVED CLASSES =================
+class PermanentEmployee : public Employee {
 public:
-    void setAttendance(int present, int total) {
-        daysPresent = present;
-        totalDays = total;
+    PermanentEmployee(int id, string n, string dept, double salary)
+        : Employee(id, n, dept, "Permanent", salary) {}
+
+    double calculateBasicPay() const override {
+        return baseSalary;
     }
 
-    double attendancePercentage() {
-        if (totalDays == 0) return 0;
-        return ((double)daysPresent / totalDays) * 100;
+    double getTaxRate() const override {
+        return 0.10;
+    }
+
+    double getInsuranceRate() const override {
+        return 0.05;
+    }
+
+    double getPensionRate() const override {
+        return 0.08;
     }
 };
 
-class Leave {
-protected:
-    int leaveTaken;
-    int maxLeave = 5;
-
+class PartTimeEmployee : public Employee {
 public:
-    void setLeave(int leave) {
-        leaveTaken = leave;
+    PartTimeEmployee(int id, string n, string dept, double salary)
+        : Employee(id, n, dept, "Part-Time", salary) {}
+
+    double calculateBasicPay() const override {
+        return baseSalary * 0.60;
     }
 
-    int extraLeave() {
-        return (leaveTaken > maxLeave) ? (leaveTaken - maxLeave) : 0;
+    double getTaxRate() const override {
+        return 0.05;
     }
 
-    double leaveDeduction() {
-        return extraLeave() * 500;
+    double getInsuranceRate() const override {
+        return 0.02;
+    }
+
+    double getPensionRate() const override {
+        return 0.03;
     }
 };
 
-class Salary : public Employee, public Attendance, public Leave {
-private:
-    double baseSalary, overtimeHours, bonus;
-
+class ContractEmployee : public Employee {
 public:
-    void setSalaryDetails(double base, double overtime, double bonusAmount) {
-        baseSalary = base;
-        overtimeHours = overtime;
-        bonus = bonusAmount;
+    ContractEmployee(int id, string n, string dept, double salary)
+        : Employee(id, n, dept, "Contract", salary) {}
+
+    double calculateBasicPay() const override {
+        return baseSalary * 0.80;
     }
 
-    double overtimePay() {
-        return overtimeHours * 200;
+    double getTaxRate() const override {
+        return 0.08;
     }
 
-    double grossSalary() {
-        return baseSalary + overtimePay() + bonus;
+    double getInsuranceRate() const override {
+        return 0.03;
     }
 
-    double tax() {
-        return grossSalary() * 0.10;
-    }
-
-    double insurance() {
-        return grossSalary() * 0.05;
-    }
-
-    double pension() {
-        return grossSalary() * 0.03;
-    }
-
-    double netSalary() {
-        return grossSalary() - (tax() + insurance() + pension() + leaveDeduction());
-    }
-
-    void displaySalarySlip() {
-        cout << "\nEmployee ID: " << getEmpID();
-        cout << "\nName: " << getName();
-
-        cout << "\n----- Salary Slip -----";
-        cout << "\nBase Salary: " << baseSalary;
-        cout << "\nOvertime Pay: " << overtimePay();
-        cout << "\nBonus: " << bonus;
-        cout << "\nGross Salary: " << grossSalary();
-
-        cout << "\n\nDeductions:";
-        cout << "\nTax: " << tax();
-        cout << "\nInsurance: " << insurance();
-        cout << "\nPension: " << pension();
-        cout << "\nLeave Deduction: " << leaveDeduction();
-
-        cout << "\n\nNet Salary: " << netSalary();
-        cout << "\nAttendance: " << attendancePercentage() << "%";
-        cout << "\n----------------------\n";
+    double getPensionRate() const override {
+        return 0.04;
     }
 };
 
-// int main() {
-//     Salary emp;
+// ================= FACTORY FUNCTION =================
+Employee* createEmployeeObject(int empID, string name, string department,
+                               string employeeType, double baseSalary) {
+    if (employeeType == "Permanent") {
+        return new PermanentEmployee(empID, name, department, baseSalary);
+    }
+    else if (employeeType == "Part-Time") {
+        return new PartTimeEmployee(empID, name, department, baseSalary);
+    }
+    else if (employeeType == "Contract") {
+        return new ContractEmployee(empID, name, department, baseSalary);
+    }
+    else {
+        throw InvalidInputException("Invalid employee type. Use Permanent, Part-Time, or Contract.");
+    }
+}
 
-//     emp.setBasicInfo(101, "Rahul");
-//     emp.setAttendance(20, 22);
-//     emp.setLeave(6);
-//     emp.setSalaryDetails(30000, 5, 2000);
-
-//     emp.displaySalarySlip();
-
-//     return 0;
-// }
+#endif
