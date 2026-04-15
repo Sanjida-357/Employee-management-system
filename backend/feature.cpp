@@ -141,3 +141,32 @@ public:
         return out.str();
     }
 };
+// ================= FILE HANDLING =================
+void saveEmployeeToFile(const Payroll& p, const string& filename = "employees.txt") {
+    ofstream file(filename, ios::app);
+
+    if (!file) {
+        throw InvalidInputException("File could not be opened.");
+    }
+
+    file << p.calculateNetSalary() << endl;
+
+    file.close();
+}
+
+vector<string> loadEmployeesFromFile(const string& filename = "employees.txt") {
+    vector<string> data;
+    ifstream file(filename);
+
+    if (!file) {
+        return data; // return empty if file doesn't exist
+    }
+
+    string line;
+    while (getline(file, line)) {
+        data.push_back(line);
+    }
+
+    file.close();
+    return data;
+}
