@@ -1,65 +1,270 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMS Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMS Dashboard</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./style.css?v=4" />
 </head>
+
 <body>
+  <div class="page-shell">
 
-<!-- Header -->
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div>
+        <div class="brand-block">
+          <div class="brand-icon">EMS</div>
+          <div>
+            <h2>Employee Management</h2>
+            <p>Dashboard</p>
+          </div>
+        </div>
 
-<div class="header">
-    <h2>Employee Management System Dashboard</h2>
-</div>
+        <div class="sidebar-menu">
+          <div class="menu-item active" onclick="showSection('dashboard', this)">Dashboard</div>
+          <div class="menu-item" onclick="showSection('employees', this)">Employees</div>
+          <div class="menu-item" onclick="showSection('payroll', this)">Payroll</div>
+          <div class="menu-item" onclick="showSection('slips', this)">Salary Slips</div>
+        </div>
+      </div>
+    </aside>
 
-<div class="container">
+    <!-- MAIN -->
+    <main class="main-content">
 
-```
-<!-- Form Section -->
-<div class="card">
-    <h3>Add Employee</h3>
-    <form id="employeeForm">
-        <input type="text" id="empId" placeholder="Employee ID" required>
-        <input type="text" id="name" placeholder="Name" required>
-        <input type="text" id="position" placeholder="Position" required>
-        <input type="number" id="salary" placeholder="Salary" required>
-        <input type="number" id="attendance" placeholder="Attendance">
-        <input type="number" id="leave" placeholder="Leave Days">
-        <button type="submit">Add Employee</button>
-    </form>
-</div>
+      <!-- TOPBAR -->
+      <div class="topbar">
+        <div>
+          <h1>Employee Management System</h1>
+          <p class="subtitle">
+            Manage employee records, payroll calculations, and salary slips from one dashboard.
+          </p>
+        </div>
+      </div>
 
-<!-- Table Section -->
-<div class="card">
-    <h3>Employee Records</h3>
-    <input type="text" id="searchInput" placeholder="Search by ID or Name..." onkeyup="searchEmployee()">
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Position</th>
-                <th>Salary</th>
-                <th>Attendance</th>
-                <th>Leave</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="employeeTable">
-            <!-- Dynamic rows will come here -->
-        </tbody>
-    </table>
-</div>
-```
+      <!-- DASHBOARD SECTION -->
+      <section id="dashboardSection" class="content-section active-section">
+        <div class="stats-row" id="statsSection">
+          <div class="stat-card">
+            <p>Core Feature</p>
+            <h3>Employee Records</h3>
+            <span>Add, update, search, manage</span>
+          </div>
 
-</div>
+          <div class="stat-card">
+            <p>Payroll</p>
+            <h3>Salary Calculation</h3>
+            <span>Overtime, bonus, deductions</span>
+          </div>
 
-<!-- Link JS -->
+          <div class="stat-card">
+            <p>Output</p>
+            <h3>Salary Slips</h3>
+            <span>Generate, save, download</span>
+          </div>
+        </div>
 
-<script src="script.js"></script>
+        <div class="dashboard-grid">
 
+          <!-- FORM -->
+          <div class="card" id="formCard">
+            <div class="section-header">
+              <div>
+                <p class="section-tag">Input</p>
+                <h2>Employee Form</h2>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="input-group">
+                <label>Employee ID</label>
+                <input type="number" id="empID" placeholder="Enter employee ID" />
+              </div>
+
+              <div class="input-group">
+                <label>Name</label>
+                <input type="text" id="name" placeholder="Enter employee name" />
+              </div>
+
+              <div class="input-group">
+                <label>Department</label>
+                <input type="text" id="department" placeholder="Enter department" />
+              </div>
+
+              <div class="input-group">
+                <label>Type</label>
+                <select id="employmentType">
+                  <option>Permanent</option>
+                  <option>Part-Time</option>
+                  <option>Contract</option>
+                </select>
+              </div>
+
+              <div class="input-group">
+                <label>Days Present</label>
+                <input type="number" id="daysPresent" placeholder="Enter days present" />
+              </div>
+
+              <div class="input-group">
+                <label>Total Days</label>
+                <input type="number" id="totalDays" placeholder="Enter total working days" />
+              </div>
+
+              <div class="input-group">
+                <label>Leave Taken</label>
+                <input type="number" id="leaveTaken" placeholder="Enter leave taken" />
+              </div>
+
+              <div class="input-group">
+                <label>Base Salary</label>
+                <input type="number" id="baseSalary" placeholder="Enter base salary" />
+              </div>
+
+              <div class="input-group">
+                <label>Overtime Hours</label>
+                <input type="number" id="overtimeHours" placeholder="Enter overtime hours" />
+              </div>
+
+              <div class="input-group">
+                <label>Bonus</label>
+                <input type="number" id="bonus" placeholder="Enter bonus" />
+              </div>
+            </div>
+
+            <div class="button-row">
+              <button onclick="saveEmployee()">Save</button>
+              <button onclick="updateEmployee()" class="secondary">Update</button>
+              <button onclick="clearForm()" class="danger">Clear</button>
+            </div>
+
+            <div class="button-row">
+              <button onclick="generateSalarySlip()" class="gold-btn">Generate Slip</button>
+              <button onclick="saveSalarySlip()" class="secondary">Save Slip</button>
+              <button onclick="downloadSlip()" class="secondary">Download</button>
+            </div>
+          </div>
+
+          <!-- DIRECTORY -->
+          <div class="card" id="directoryCard">
+            <div class="section-header">
+              <div>
+                <p class="section-tag">Search</p>
+                <h2>Employee Directory</h2>
+              </div>
+            </div>
+
+            <div class="search-box">
+              <input type="number" id="searchID" placeholder="Enter employee ID" />
+              <button onclick="searchEmployee()">Search</button>
+              <button onclick="loadEmployees()" class="secondary">View All</button>
+            </div>
+
+            <div id="messageBox" class="message-box"></div>
+
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Dept</th>
+                    <th>Type</th>
+                    <th>Salary</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="employeeTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- EMPLOYEES SECTION -->
+      <section id="employeesSection" class="content-section">
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <p class="section-tag">Employees</p>
+              <h2>Employee Records</h2>
+            </div>
+          </div>
+
+          <div class="search-box">
+            <input type="number" id="searchIDEmployees" placeholder="Enter employee ID" />
+            <button onclick="copySearchAndRun('searchIDEmployees')">Search</button>
+            <button onclick="loadEmployees()" class="secondary">View All</button>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Dept</th>
+                  <th>Type</th>
+                  <th>Salary</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="employeeTableBodyEmployees"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAYROLL SECTION -->
+      <section id="payrollSection" class="content-section">
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <p class="section-tag">Payroll</p>
+              <h2>Payroll Actions</h2>
+            </div>
+          </div>
+
+          <p class="payroll-note">
+            Use the employee form to enter salary details, then generate a slip to view earnings, deductions, and net salary.
+          </p>
+
+          <div class="button-row">
+            <button onclick="generateSalarySlip()" class="gold-btn">Generate Salary Slip</button>
+            <button onclick="saveSalarySlip()" class="secondary">Save Salary Slip</button>
+            <button onclick="downloadSlip()" class="secondary">Download Salary Slip</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SLIPS SECTION -->
+      <section id="slipsSection" class="content-section">
+        <div class="card slip-card" id="slipCard">
+          <div class="section-header">
+            <div>
+              <p class="section-tag">Output</p>
+              <h2>Professional Salary Slip</h2>
+            </div>
+          </div>
+
+          <div id="salarySlip" class="salary-slip">
+            <div class="slip-placeholder">
+              <div class="slip-placeholder-icon">₹</div>
+              <h3>No salary slip generated yet</h3>
+              <p>Fill in employee details and click <strong>Generate Slip</strong> to preview a professional salary slip here.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="./script.js?v=4"></script>
 </body>
 </html>
