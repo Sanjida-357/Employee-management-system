@@ -126,7 +126,7 @@ public:
         : Employee(id, n, dept, "Permanent", salary) {}
 
     double calculateBasicPay() const override {
-        return baseSalary;
+        return baseSalary * 0.60;
     }
 
     double getTaxRate() const override {
@@ -148,7 +148,7 @@ public:
         : Employee(id, n, dept, "Part-Time", salary) {}
 
     double calculateBasicPay() const override {
-        return baseSalary;
+        return baseSalary * 0.60;
     }
 
     double getTaxRate() const override {
@@ -170,7 +170,7 @@ public:
         : Employee(id, n, dept, "Contract", salary) {}
 
     double calculateBasicPay() const override {
-        return baseSalary;
+        return baseSalary * 0.60;
     }
 
     double getTaxRate() const override {

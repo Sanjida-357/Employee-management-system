@@ -217,20 +217,18 @@ double overtimePay(const string& employmentType, double overtimeHours) {
     return overtimeHours * overtimeRateByType(employmentType);
 }
 
-double leaveDeduction(int daysPresent, int totalDays, int leaveTaken, double baseSalary) {
+double leaveDeduction(int daysPresent, int totalDays, int leaveTaken, double basicPay) {
     const int paidLeaveLimit = 1;
 
     int absentDays = totalDays - daysPresent;
-
     int paidLeaveUsed = min(leaveTaken, paidLeaveLimit);
-
     int unpaidDays = absentDays - paidLeaveUsed;
 
     if (unpaidDays <= 0) {
         return 0.0;
     }
 
-    double perDaySalary = baseSalary / totalDays;
+    double perDaySalary = basicPay / totalDays;
     return unpaidDays * perDaySalary;
 }
 
@@ -244,10 +242,10 @@ json calculateSalaryDetails(const EmployeeRecord& e) {
     ));
 
     double attend = attendancePercentage(e.daysPresent, e.totalDays);
-    double leaveDed = leaveDeduction(e.daysPresent, e.totalDays, e.leaveTaken, e.baseSalary);
+    double basicPay = emp->calculateBasicPay();
+    double leaveDed = leaveDeduction(e.daysPresent, e.totalDays, e.leaveTaken, basicPay);
     double overtime = overtimePay(e.employmentType, e.overtimeHours);
 
-    double basicPay = emp->calculateBasicPay();
     double gross = basicPay + overtime + e.bonus;
     double taxAmount = gross * emp->getTaxRate();
     double insuranceAmount = gross * emp->getInsuranceRate();
