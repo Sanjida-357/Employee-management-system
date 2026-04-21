@@ -1,5 +1,13 @@
-backend/server
+# Compiled files
+server
 *.out
 *.exe
-.DS_Store.vscode/
+
+# Mac system files
 .DS_Store
+
+# VS Code settings
+.vscode/
+
+# Ignore runtime data file
+backend/employees.json

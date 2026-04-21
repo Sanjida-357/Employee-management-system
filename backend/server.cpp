@@ -2,13 +2,18 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <memory>
+#include <exception>
+
 #include "httplib.h"
 #include "json.hpp"
+#include "employee.cpp"
 
 using namespace std;
 using json = nlohmann::json;
 
-struct Employee {
+struct EmployeeRecord {
     int empID;
     string name;
     string department;
@@ -21,49 +26,62 @@ struct Employee {
     double bonus;
 };
 
-vector<Employee> employees;
+vector<EmployeeRecord> employees;
+
+json employeeToJson(const EmployeeRecord& e) {
+    return {
+        {"empID", e.empID},
+        {"name", e.name},
+        {"department", e.department},
+        {"employmentType", e.employmentType},
+        {"daysPresent", e.daysPresent},
+        {"totalDays", e.totalDays},
+        {"leaveTaken", e.leaveTaken},
+        {"baseSalary", e.baseSalary},
+        {"overtimeHours", e.overtimeHours},
+        {"bonus", e.bonus}
+    };
+}
 
 void loadEmployeesFromFile() {
     employees.clear();
+
     ifstream file("employees.json");
     if (!file.is_open()) return;
 
-    json j;
-    file >> j;
-    file.close();
+    try {
+        json j;
+        file >> j;
 
-    for (auto& item : j) {
-        Employee e;
-        e.empID = item["empID"];
-        e.name = item["name"];
-        e.department = item["department"];
-        e.employmentType = item["employmentType"];
-        e.daysPresent = item["daysPresent"];
-        e.totalDays = item["totalDays"];
-        e.leaveTaken = item["leaveTaken"];
-        e.baseSalary = item["baseSalary"];
-        e.overtimeHours = item["overtimeHours"];
-        e.bonus = item["bonus"];
-        employees.push_back(e);
+        if (!j.is_array()) return;
+
+        for (const auto& item : j) {
+            EmployeeRecord e;
+            e.empID = item.value("empID", 0);
+            e.name = item.value("name", "");
+            e.department = item.value("department", "");
+            e.employmentType = item.value("employmentType", "Permanent");
+            e.daysPresent = item.value("daysPresent", 0);
+            e.totalDays = item.value("totalDays", 0);
+            e.leaveTaken = item.value("leaveTaken", 0);
+            e.baseSalary = item.value("baseSalary", 0.0);
+            e.overtimeHours = item.value("overtimeHours", 0.0);
+            e.bonus = item.value("bonus", 0.0);
+
+            employees.push_back(e);
+        }
+    } catch (...) {
+        cout << "Warning: Could not read employees.json properly." << endl;
     }
+
+    file.close();
 }
 
 void saveEmployeesToFile() {
     json j = json::array();
 
     for (const auto& e : employees) {
-        j.push_back({
-            {"empID", e.empID},
-            {"name", e.name},
-            {"department", e.department},
-            {"employmentType", e.employmentType},
-            {"daysPresent", e.daysPresent},
-            {"totalDays", e.totalDays},
-            {"leaveTaken", e.leaveTaken},
-            {"baseSalary", e.baseSalary},
-            {"overtimeHours", e.overtimeHours},
-            {"bonus", e.bonus}
-        });
+        j.push_back(employeeToJson(e));
     }
 
     ofstream file("employees.json");
@@ -72,39 +90,184 @@ void saveEmployeesToFile() {
 }
 
 int findEmployeeIndexByID(int id) {
-    for (int i = 0; i < employees.size(); i++) {
+    for (int i = 0; i < static_cast<int>(employees.size()); i++) {
         if (employees[i].empID == id) return i;
     }
     return -1;
 }
 
-double attendancePercentage(int daysPresent, int totalDays) {
-    if (totalDays == 0) return 0;
-    return ((double)daysPresent / totalDays) * 100.0;
+string trim(const string& s) {
+    size_t start = s.find_first_not_of(" \t\n\r");
+    size_t end = s.find_last_not_of(" \t\n\r");
+
+    if (start == string::npos) return "";
+    return s.substr(start, end - start + 1);
 }
 
-double leaveDeduction(int leaveTaken) {
-    int maxLeave = 5;
-    if (leaveTaken > maxLeave) {
-        return (leaveTaken - maxLeave) * 200.0;
+bool isValidEmploymentType(const string& type) {
+    return type == "Permanent" || type == "Part-Time" || type == "Contract";
+}
+
+bool validateEmployeeData(const json& data, string& errorMessage) {
+    vector<string> requiredFields = {
+        "empID", "name", "department", "employmentType",
+        "daysPresent", "totalDays", "leaveTaken",
+        "baseSalary", "overtimeHours", "bonus"
+    };
+
+    for (const auto& field : requiredFields) {
+        if (!data.contains(field)) {
+            errorMessage = "Missing field: " + field;
+            return false;
+        }
     }
-    return 0.0;
+
+    try {
+        int empID = data.at("empID").get<int>();
+        string name = trim(data.at("name").get<string>());
+        string department = trim(data.at("department").get<string>());
+        string employmentType = data.at("employmentType").get<string>();
+        int daysPresent = data.at("daysPresent").get<int>();
+        int totalDays = data.at("totalDays").get<int>();
+        int leaveTaken = data.at("leaveTaken").get<int>();
+        double baseSalary = data.at("baseSalary").get<double>();
+        double overtimeHours = data.at("overtimeHours").get<double>();
+        double bonus = data.at("bonus").get<double>();
+
+        if (empID <= 0) {
+            errorMessage = "Employee ID must be positive.";
+            return false;
+        }
+
+        if (name.empty()) {
+            errorMessage = "Name cannot be empty.";
+            return false;
+        }
+
+        if (department.empty()) {
+            errorMessage = "Department cannot be empty.";
+            return false;
+        }
+
+        if (!isValidEmploymentType(employmentType)) {
+            errorMessage = "Employment type must be Permanent, Part-Time, or Contract.";
+            return false;
+        }
+
+        if (totalDays <= 0) {
+            errorMessage = "Total working days must be greater than 0.";
+            return false;
+        }
+
+        if (daysPresent < 0 || leaveTaken < 0) {
+            errorMessage = "Attendance and leave values cannot be negative.";
+            return false;
+        }
+
+        if (daysPresent > totalDays) {
+            errorMessage = "Days present cannot be greater than total days.";
+            return false;
+        }
+
+        if (leaveTaken > totalDays) {
+            errorMessage = "Leave taken cannot be greater than total days.";
+            return false;
+        }
+
+        if (baseSalary < 0 || overtimeHours < 0 || bonus < 0) {
+            errorMessage = "Salary, overtime, and bonus cannot be negative.";
+            return false;
+        }
+    } catch (const exception&) {
+        errorMessage = "Invalid data type in request body.";
+        return false;
+    }
+
+    return true;
 }
 
-double overtimePay(double overtimeHours) {
-    return overtimeHours * 200.0;
+EmployeeRecord jsonToEmployeeRecord(const json& data) {
+    EmployeeRecord e;
+    e.empID = data.at("empID").get<int>();
+    e.name = trim(data.at("name").get<string>());
+    e.department = trim(data.at("department").get<string>());
+    e.employmentType = data.at("employmentType").get<string>();
+    e.daysPresent = data.at("daysPresent").get<int>();
+    e.totalDays = data.at("totalDays").get<int>();
+    e.leaveTaken = data.at("leaveTaken").get<int>();
+    e.baseSalary = data.at("baseSalary").get<double>();
+    e.overtimeHours = data.at("overtimeHours").get<double>();
+    e.bonus = data.at("bonus").get<double>();
+    return e;
 }
 
-double tax(double grossSalary) {
-    return grossSalary * 0.10;
+double attendancePercentage(int daysPresent, int totalDays) {
+    if (totalDays == 0) return 0.0;
+    return (static_cast<double>(daysPresent) / totalDays) * 100.0;
 }
 
-double insurance(double grossSalary) {
-    return grossSalary * 0.05;
+double overtimeRateByType(const string& employmentType) {
+    if (employmentType == "Permanent") {
+        return 300.0;
+    }
+    return 200.0;
 }
 
-double pension(double grossSalary) {
-    return grossSalary * 0.03;
+double overtimePay(const string& employmentType, double overtimeHours) {
+    return overtimeHours * overtimeRateByType(employmentType);
+}
+
+double leaveDeduction(int daysPresent, int totalDays, int leaveTaken, double basicPay) {
+    const int paidLeaveLimit = 1;
+
+    int absentDays = totalDays - daysPresent;
+    int paidLeaveUsed = min(leaveTaken, paidLeaveLimit);
+    int unpaidDays = absentDays - paidLeaveUsed;
+
+    if (unpaidDays <= 0) {
+        return 0.0;
+    }
+
+    double perDaySalary = basicPay / totalDays;
+    return unpaidDays * perDaySalary;
+}
+
+json calculateSalaryDetails(const EmployeeRecord& e) {
+    unique_ptr<Employee> emp(createEmployeeObject(
+        e.empID,
+        e.name,
+        e.department,
+        e.employmentType,
+        e.baseSalary
+    ));
+
+    double attend = attendancePercentage(e.daysPresent, e.totalDays);
+    double basicPay = emp->calculateBasicPay();
+    double leaveDed = leaveDeduction(e.daysPresent, e.totalDays, e.leaveTaken, basicPay);
+    double overtime = overtimePay(e.employmentType, e.overtimeHours);
+
+    double gross = basicPay + overtime + e.bonus;
+    double taxAmount = gross * emp->getTaxRate();
+    double insuranceAmount = gross * emp->getInsuranceRate();
+    double pensionAmount = gross * emp->getPensionRate();
+    double net = gross - taxAmount - insuranceAmount - pensionAmount - leaveDed;
+
+    return {
+        {"attendancePercentage", attend},
+        {"basicPay", basicPay},
+        {"leaveDeduction", leaveDed},
+        {"overtimePay", overtime},
+        {"grossSalary", gross},
+        {"tax", taxAmount},
+        {"insurance", insuranceAmount},
+        {"pension", pensionAmount},
+        {"netSalary", net}
+    };
+}
+
+void sendJson(httplib::Response& res, const json& body, int status = 200) {
+    res.status = status;
+    res.set_content(body.dump(4), "application/json");
 }
 
 int main() {
@@ -124,29 +287,32 @@ int main() {
 
     // Save employee
     svr.Post("/employees", [](const httplib::Request& req, httplib::Response& res) {
-        json data = json::parse(req.body);
+        try {
+            json data = json::parse(req.body);
 
-        Employee e;
-        e.empID = data["empID"];
-        e.name = data["name"];
-        e.department = data["department"];
-        e.employmentType = data["employmentType"];
-        e.daysPresent = data["daysPresent"];
-        e.totalDays = data["totalDays"];
-        e.leaveTaken = data["leaveTaken"];
-        e.baseSalary = data["baseSalary"];
-        e.overtimeHours = data["overtimeHours"];
-        e.bonus = data["bonus"];
+            string errorMessage;
+            if (!validateEmployeeData(data, errorMessage)) {
+                sendJson(res, {{"message", errorMessage}}, 400);
+                return;
+            }
 
-        if (findEmployeeIndexByID(e.empID) != -1) {
-            res.status = 400;
-            res.set_content(R"({"message":"Employee ID already exists."})", "application/json");
-            return;
+            EmployeeRecord e = jsonToEmployeeRecord(data);
+
+            if (findEmployeeIndexByID(e.empID) != -1) {
+                sendJson(res, {{"message", "Employee ID already exists."}}, 400);
+                return;
+            }
+
+            employees.push_back(e);
+            saveEmployeesToFile();
+
+            sendJson(res, {
+                {"message", "Employee saved successfully."},
+                {"employee", employeeToJson(e)}
+            });
+        } catch (const exception& ex) {
+            sendJson(res, {{"message", string("Invalid request: ") + ex.what()}}, 400);
         }
-
-        employees.push_back(e);
-        saveEmployeesToFile();
-        res.set_content(R"({"message":"Employee saved successfully."})", "application/json");
     });
 
     // View all employees
@@ -154,21 +320,10 @@ int main() {
         json j = json::array();
 
         for (const auto& e : employees) {
-            j.push_back({
-                {"empID", e.empID},
-                {"name", e.name},
-                {"department", e.department},
-                {"employmentType", e.employmentType},
-                {"daysPresent", e.daysPresent},
-                {"totalDays", e.totalDays},
-                {"leaveTaken", e.leaveTaken},
-                {"baseSalary", e.baseSalary},
-                {"overtimeHours", e.overtimeHours},
-                {"bonus", e.bonus}
-            });
+            j.push_back(employeeToJson(e));
         }
 
-        res.set_content(j.dump(4), "application/json");
+        sendJson(res, j);
     });
 
     // Search employee by ID
@@ -177,54 +332,50 @@ int main() {
         int index = findEmployeeIndexByID(id);
 
         if (index == -1) {
-            res.status = 404;
-            res.set_content(R"({"message":"Employee not found."})", "application/json");
+            sendJson(res, {{"message", "Employee not found."}}, 404);
             return;
         }
 
-        Employee e = employees[index];
-        json j = {
-            {"empID", e.empID},
-            {"name", e.name},
-            {"department", e.department},
-            {"employmentType", e.employmentType},
-            {"daysPresent", e.daysPresent},
-            {"totalDays", e.totalDays},
-            {"leaveTaken", e.leaveTaken},
-            {"baseSalary", e.baseSalary},
-            {"overtimeHours", e.overtimeHours},
-            {"bonus", e.bonus}
-        };
-
-        res.set_content(j.dump(4), "application/json");
+        sendJson(res, employeeToJson(employees[index]));
     });
 
     // Update employee
     svr.Put(R"(/employees/(\d+))", [](const httplib::Request& req, httplib::Response& res) {
-        int id = stoi(req.matches[1]);
-        int index = findEmployeeIndexByID(id);
+        try {
+            int originalId = stoi(req.matches[1]);
+            int index = findEmployeeIndexByID(originalId);
 
-        if (index == -1) {
-            res.status = 404;
-            res.set_content(R"({"message":"Employee not found."})", "application/json");
-            return;
+            if (index == -1) {
+                sendJson(res, {{"message", "Employee not found."}}, 404);
+                return;
+            }
+
+            json data = json::parse(req.body);
+
+            string errorMessage;
+            if (!validateEmployeeData(data, errorMessage)) {
+                sendJson(res, {{"message", errorMessage}}, 400);
+                return;
+            }
+
+            EmployeeRecord updated = jsonToEmployeeRecord(data);
+
+            int otherIndex = findEmployeeIndexByID(updated.empID);
+            if (otherIndex != -1 && otherIndex != index) {
+                sendJson(res, {{"message", "Another employee already has this ID."}}, 400);
+                return;
+            }
+
+            employees[index] = updated;
+            saveEmployeesToFile();
+
+            sendJson(res, {
+                {"message", "Employee updated successfully."},
+                {"employee", employeeToJson(updated)}
+            });
+        } catch (const exception& ex) {
+            sendJson(res, {{"message", string("Invalid request: ") + ex.what()}}, 400);
         }
-
-        json data = json::parse(req.body);
-
-        employees[index].empID = data["empID"];
-        employees[index].name = data["name"];
-        employees[index].department = data["department"];
-        employees[index].employmentType = data["employmentType"];
-        employees[index].daysPresent = data["daysPresent"];
-        employees[index].totalDays = data["totalDays"];
-        employees[index].leaveTaken = data["leaveTaken"];
-        employees[index].baseSalary = data["baseSalary"];
-        employees[index].overtimeHours = data["overtimeHours"];
-        employees[index].bonus = data["bonus"];
-
-        saveEmployeesToFile();
-        res.set_content(R"({"message":"Employee updated successfully."})", "application/json");
     });
 
     // Delete employee
@@ -233,48 +384,36 @@ int main() {
         int index = findEmployeeIndexByID(id);
 
         if (index == -1) {
-            res.status = 404;
-            res.set_content(R"({"message":"Employee not found."})", "application/json");
+            sendJson(res, {{"message", "Employee not found."}}, 404);
             return;
         }
 
         employees.erase(employees.begin() + index);
         saveEmployeesToFile();
-        res.set_content(R"({"message":"Employee deleted successfully."})", "application/json");
+
+        sendJson(res, {{"message", "Employee deleted successfully."}});
     });
 
-    // Generate salary slip
+    // Calculate payroll
     svr.Post("/calculate", [](const httplib::Request& req, httplib::Response& res) {
-        json data = json::parse(req.body);
+        try {
+            json data = json::parse(req.body);
 
-        int daysPresent = data["daysPresent"];
-        int totalDays = data["totalDays"];
-        int leaveTaken = data["leaveTaken"];
-        double baseSalary = data["baseSalary"];
-        double overtimeHours = data["overtimeHours"];
-        double bonus = data["bonus"];
+            string errorMessage;
+            if (!validateEmployeeData(data, errorMessage)) {
+                sendJson(res, {{"message", errorMessage}}, 400);
+                return;
+            }
 
-        double attend = attendancePercentage(daysPresent, totalDays);
-        double leaveDed = leaveDeduction(leaveTaken);
-        double overtime = overtimePay(overtimeHours);
-        double gross = baseSalary + overtime + bonus - leaveDed;
-        double taxAmount = tax(gross);
-        double insuranceAmount = insurance(gross);
-        double pensionAmount = pension(gross);
-        double net = gross - taxAmount - insuranceAmount - pensionAmount;
+            EmployeeRecord e = jsonToEmployeeRecord(data);
+            json result = calculateSalaryDetails(e);
 
-        json response = {
-            {"attendancePercentage", attend},
-            {"leaveDeduction", leaveDed},
-            {"overtimePay", overtime},
-            {"grossSalary", gross},
-            {"tax", taxAmount},
-            {"insurance", insuranceAmount},
-            {"pension", pensionAmount},
-            {"netSalary", net}
-        };
-
-        res.set_content(response.dump(4), "application/json");
+            sendJson(res, result);
+        } catch (const InvalidInputException& ex) {
+            sendJson(res, {{"message", ex.what()}}, 400);
+        } catch (const exception& ex) {
+            sendJson(res, {{"message", string("Invalid request: ") + ex.what()}}, 400);
+        }
     });
 
     cout << "Server running at http://localhost:8080" << endl;

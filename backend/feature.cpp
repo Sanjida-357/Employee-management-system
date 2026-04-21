@@ -46,33 +46,42 @@ public:
     double getAttendancePercentage() const {
         return (static_cast<double>(daysPresent) / totalDays) * 100.0;
     }
+
+    int getAbsentDays() const {
+        return totalDays - daysPresent;
+    }
 };
 
 // ================= LEAVE CLASS =================
 class Leave {
 protected:
-    int paidLeave;
-    int unpaidLeave;
+    int paidLeaveUsed;
 
 public:
     Leave() {
-        paidLeave = 0;
-        unpaidLeave = 0;
+        paidLeaveUsed = 0;
     }
 
-    void setLeave(int paid, int unpaid) {
-        if (paid < 0 || unpaid < 0) {
+    void setLeave(int paid) {
+        if (paid < 0) {
             throw InvalidInputException("Leave cannot be negative.");
         }
-        paidLeave = paid;
-        unpaidLeave = unpaid;
+        paidLeaveUsed = paid;
     }
 
-    int getPaidLeave() const { return paidLeave; }
-    int getUnpaidLeave() const { return unpaidLeave; }
+    int getPaidLeaveUsed() const { return paidLeaveUsed; }
 
-    double calculateLeaveDeduction(double dailySalary) const {
-        return unpaidLeave * dailySalary;
+    double calculateLeaveDeduction(int daysPresent, int totalDays, double baseSalary) const {
+        const int paidLeaveLimit = 1;
+
+        int absentDays = totalDays - daysPresent;
+        int usablePaidLeave = min(paidLeaveUsed, paidLeaveLimit);
+        int unpaidDays = absentDays - usablePaidLeave;
+
+        if (unpaidDays <= 0) return 0.0;
+
+        double dailySalary = baseSalary / totalDays;
+        return unpaidDays * dailySalary;
     }
 };
 
@@ -81,13 +90,11 @@ class Payroll : public Attendance, public Leave {
 private:
     Employee* emp;
     double bonus;
-    double overtimeRate;
 
 public:
     Payroll(Employee* e) {
         emp = e;
         bonus = 0;
-        overtimeRate = 200;
     }
 
     ~Payroll() {
@@ -105,8 +112,15 @@ public:
 
     double getBonus() const { return bonus; }
 
+    double getOvertimeRate() const {
+        if (emp->getEmployeeType() == "Permanent") {
+            return 300.0;
+        }
+        return 200.0;
+    }
+
     double calculateOvertimePay() const {
-        return overtimeHours * overtimeRate;
+        return overtimeHours * getOvertimeRate();
     }
 
     double calculateGrossSalary() const {
@@ -126,14 +140,12 @@ public:
     }
 
     double calculateLeaveDeduction() const {
-        double daily = emp->getBaseSalary() / maxValue(totalDays, 1);
-        return Leave::calculateLeaveDeduction(daily);
+        return Leave::calculateLeaveDeduction(daysPresent, totalDays, emp->getBaseSalary());
     }
 
     double calculateNetSalary() const {
-        double gross = calculateGrossSalary();
         double deductions = calculateTax() + calculateInsurance() + calculatePension() + calculateLeaveDeduction();
-        return gross - deductions;
+        return calculateGrossSalary() - deductions;
     }
 
     string generateSlip() const {
@@ -147,11 +159,12 @@ public:
         out << "Days Present: " << daysPresent << "\n";
         out << "Total Days: " << totalDays << "\n";
         out << "Attendance %: " << getAttendancePercentage() << "\n";
-        out << "Paid Leave: " << paidLeave << "\n";
-        out << "Unpaid Leave: " << unpaidLeave << "\n";
+        out << "Paid Leave Used: " << paidLeaveUsed << "\n";
         out << "Overtime Hours: " << overtimeHours << "\n";
         out << "Bonus: " << bonus << "\n";
         out << "-------------------------\n";
+        out << "Basic Pay: " << emp->calculateBasicPay() << "\n";
+        out << "Overtime Pay: " << calculateOvertimePay() << "\n";
         out << "Gross Salary: " << calculateGrossSalary() << "\n";
         out << "Tax: " << calculateTax() << "\n";
         out << "Insurance: " << calculateInsurance() << "\n";
@@ -164,7 +177,7 @@ public:
 };
 
 // ================= EMPLOYEE RECORD =================
-struct EmployeeRecord {
+struct EmployeeRecordFile {
     int empID;
     string name;
     string department;
@@ -172,13 +185,12 @@ struct EmployeeRecord {
     double baseSalary;
     int daysPresent;
     int totalDays;
-    int paidLeave;
-    int unpaidLeave;
+    int paidLeaveUsed;
     double overtimeHours;
     double bonus;
 };
 
-inline string recordToCSV(const EmployeeRecord& r) {
+inline string recordToCSV(const EmployeeRecordFile& r) {
     ostringstream out;
     out << r.empID << ","
         << r.name << ","
@@ -187,17 +199,16 @@ inline string recordToCSV(const EmployeeRecord& r) {
         << r.baseSalary << ","
         << r.daysPresent << ","
         << r.totalDays << ","
-        << r.paidLeave << ","
-        << r.unpaidLeave << ","
+        << r.paidLeaveUsed << ","
         << r.overtimeHours << ","
         << r.bonus;
     return out.str();
 }
 
-inline EmployeeRecord csvToRecord(const string& line) {
+inline EmployeeRecordFile csvToRecord(const string& line) {
     stringstream ss(line);
     string token;
-    EmployeeRecord r;
+    EmployeeRecordFile r;
 
     getline(ss, token, ','); r.empID = stoi(token);
     getline(ss, r.name, ',');
@@ -206,34 +217,15 @@ inline EmployeeRecord csvToRecord(const string& line) {
     getline(ss, token, ','); r.baseSalary = stod(token);
     getline(ss, token, ','); r.daysPresent = stoi(token);
     getline(ss, token, ','); r.totalDays = stoi(token);
-    getline(ss, token, ','); r.paidLeave = stoi(token);
-    getline(ss, token, ','); r.unpaidLeave = stoi(token);
+    getline(ss, token, ','); r.paidLeaveUsed = stoi(token);
     getline(ss, token, ','); r.overtimeHours = stod(token);
     getline(ss, token, ','); r.bonus = stod(token);
 
     return r;
 }
 
-inline EmployeeRecord payrollToRecord(const Payroll& p) {
-    Employee* e = p.getEmployee();
-    EmployeeRecord r;
-    r.empID = e->getEmpID();
-    r.name = e->getName();
-    r.department = e->getDepartment();
-    r.employeeType = e->getEmployeeType();
-    r.baseSalary = e->getBaseSalary();
-    r.daysPresent = p.getDaysPresent();
-    r.totalDays = p.getTotalDays();
-    r.paidLeave = p.getPaidLeave();
-    r.unpaidLeave = p.getUnpaidLeave();
-    r.overtimeHours = p.getOvertimeHours();
-    r.bonus = p.getBonus();
-    return r;
-}
-
-// ================= FILE HANDLING =================
-inline vector<EmployeeRecord> loadEmployeeRecords(const string& filename = "employees.txt") {
-    vector<EmployeeRecord> records;
+inline vector<EmployeeRecordFile> loadEmployeeRecords(const string& filename = "employees.txt") {
+    vector<EmployeeRecordFile> records;
     ifstream file(filename);
 
     if (!file) return records;
@@ -249,121 +241,12 @@ inline vector<EmployeeRecord> loadEmployeeRecords(const string& filename = "empl
     return records;
 }
 
-inline void writeAllEmployeeRecords(const vector<EmployeeRecord>& records, const string& filename = "employees.txt") {
-    ofstream file(filename, ios::trunc);
+inline void writeAllEmployeeRecords(const vector<EmployeeRecordFile>& records, const string& filename = "employees.txt") {
+    ofstream file(filename);
 
-    if (!file) {
-        throw InvalidInputException("File could not be opened.");
+    for (const auto& record : records) {
+        file << recordToCSV(record) << "\n";
     }
-
-    for (const auto& r : records) {
-        file << recordToCSV(r) << endl;
-    }
-
-    file.close();
-}
-
-inline bool saveEmployeeToFile(const Payroll& p, const string& filename = "employees.txt") {
-    EmployeeRecord newRecord = payrollToRecord(p);
-    vector<EmployeeRecord> records = loadEmployeeRecords(filename);
-
-    bool updatedExisting = false;
-    for (auto& r : records) {
-        if (r.empID == newRecord.empID) {
-            r = newRecord;
-            updatedExisting = true;
-            break;
-        }
-    }
-
-    if (!updatedExisting) {
-        records.push_back(newRecord);
-    }
-
-    writeAllEmployeeRecords(records, filename);
-    return updatedExisting;
-}
-
-inline vector<string> loadEmployeesFromFile(const string& filename = "employees.txt") {
-    vector<string> lines;
-    vector<EmployeeRecord> records = loadEmployeeRecords(filename);
-
-    for (const auto& r : records) {
-        ostringstream out;
-        out << "ID: " << r.empID
-            << " | Name: " << r.name
-            << " | Dept: " << r.department
-            << " | Type: " << r.employeeType
-            << " | Salary: " << r.baseSalary
-            << " | Present: " << r.daysPresent << "/" << r.totalDays
-            << " | Paid Leave: " << r.paidLeave
-            << " | Unpaid Leave: " << r.unpaidLeave
-            << " | Overtime: " << r.overtimeHours
-            << " | Bonus: " << r.bonus;
-        lines.push_back(out.str());
-    }
-
-    return lines;
-}
-
-inline bool findEmployeeByID(int id, EmployeeRecord& found, const string& filename = "employees.txt") {
-    vector<EmployeeRecord> records = loadEmployeeRecords(filename);
-
-    for (const auto& r : records) {
-        if (r.empID == id) {
-            found = r;
-            return true;
-        }
-    }
-
-    return false;
-}
-
-inline bool updateEmployeeByID(int id, const EmployeeRecord& updatedRecord, const string& filename = "employees.txt") {
-    vector<EmployeeRecord> records = loadEmployeeRecords(filename);
-
-    for (auto& r : records) {
-        if (r.empID == id) {
-            r = updatedRecord;
-            writeAllEmployeeRecords(records, filename);
-            return true;
-        }
-    }
-
-    return false;
-}
-
-inline bool deleteEmployeeByID(int id, const string& filename = "employees.txt") {
-    vector<EmployeeRecord> records = loadEmployeeRecords(filename);
-    vector<EmployeeRecord> filtered;
-    bool found = false;
-
-    for (const auto& r : records) {
-        if (r.empID == id) {
-            found = true;
-        } else {
-            filtered.push_back(r);
-        }
-    }
-
-    if (found) {
-        writeAllEmployeeRecords(filtered, filename);
-    }
-
-    return found;
-}
-
-// ================= SALARY SLIP FILE =================
-inline void saveSlipToFile(const string& slipText, const string& filename = "salary_slips.txt") {
-    ofstream file(filename, ios::app);
-
-    if (!file) {
-        throw InvalidInputException("Salary slip file could not be opened.");
-    }
-
-    file << "====================================\n";
-    file << slipText << "\n";
-    file << "====================================\n";
 
     file.close();
 }
