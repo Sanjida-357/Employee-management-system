@@ -2,6 +2,7 @@ const API_BASE = "http://localhost:8080";
 
 let currentSlipText = "";
 let currentSlipHTML = "";
+let editingEmployeeId = null;
 
 function showMessage(message, isError = false) {
   const box = document.getElementById("messageBox");
@@ -14,6 +15,13 @@ function showMessage(message, isError = false) {
   box.style.border = isError
     ? "1px solid rgba(239, 68, 68, 0.35)"
     : "1px solid rgba(96, 165, 250, 0.22)";
+}
+
+function clearMessage() {
+  const box = document.getElementById("messageBox");
+  if (!box) return;
+  box.style.display = "none";
+  box.textContent = "";
 }
 
 function formatCurrency(value) {
@@ -50,6 +58,7 @@ function validateEmployee(data) {
     isNaN(data.empID) ||
     !data.name ||
     !data.department ||
+    !data.employmentType ||
     isNaN(data.daysPresent) ||
     isNaN(data.totalDays) ||
     isNaN(data.leaveTaken) ||
@@ -61,18 +70,40 @@ function validateEmployee(data) {
     return false;
   }
 
+  const validTypes = ["Permanent", "Part-Time", "Contract"];
+  if (!validTypes.includes(data.employmentType)) {
+    showMessage("Invalid employment type.", true);
+    return false;
+  }
+
+  if (data.empID <= 0) {
+    showMessage("Employee ID must be positive.", true);
+    return false;
+  }
+
   if (data.totalDays <= 0) {
     showMessage("Total working days must be greater than 0.", true);
     return false;
   }
 
-  if (data.daysPresent < 0 || data.leaveTaken < 0 || data.baseSalary < 0 || data.overtimeHours < 0 || data.bonus < 0) {
+  if (
+    data.daysPresent < 0 ||
+    data.leaveTaken < 0 ||
+    data.baseSalary < 0 ||
+    data.overtimeHours < 0 ||
+    data.bonus < 0
+  ) {
     showMessage("Values cannot be negative.", true);
     return false;
   }
 
   if (data.daysPresent > data.totalDays) {
     showMessage("Days present cannot be greater than total days.", true);
+    return false;
+  }
+
+  if (data.leaveTaken > data.totalDays) {
+    showMessage("Leave taken cannot be greater than total days.", true);
     return false;
   }
 
@@ -180,6 +211,19 @@ function copySearchAndRun(sourceInputId) {
   searchEmployee();
 }
 
+function fillForm(emp) {
+  document.getElementById("empID").value = emp.empID;
+  document.getElementById("name").value = emp.name;
+  document.getElementById("department").value = emp.department;
+  document.getElementById("employmentType").value = emp.employmentType;
+  document.getElementById("daysPresent").value = emp.daysPresent;
+  document.getElementById("totalDays").value = emp.totalDays;
+  document.getElementById("leaveTaken").value = emp.leaveTaken;
+  document.getElementById("baseSalary").value = emp.baseSalary;
+  document.getElementById("overtimeHours").value = emp.overtimeHours;
+  document.getElementById("bonus").value = emp.bonus;
+}
+
 async function viewEmployee(id) {
   try {
     const res = await fetch(`${API_BASE}/employees/${id}`);
@@ -189,17 +233,8 @@ async function viewEmployee(id) {
       throw new Error(emp.message || "Employee not found");
     }
 
-    document.getElementById("empID").value = emp.empID;
-    document.getElementById("name").value = emp.name;
-    document.getElementById("department").value = emp.department;
-    document.getElementById("employmentType").value = emp.employmentType;
-    document.getElementById("daysPresent").value = emp.daysPresent;
-    document.getElementById("totalDays").value = emp.totalDays;
-    document.getElementById("leaveTaken").value = emp.leaveTaken;
-    document.getElementById("baseSalary").value = emp.baseSalary;
-    document.getElementById("overtimeHours").value = emp.overtimeHours;
-    document.getElementById("bonus").value = emp.bonus;
-
+    fillForm(emp);
+    editingEmployeeId = null;
     showMessage("Employee details loaded into the form.");
     activateMenuSection("dashboard");
   } catch (err) {
@@ -216,18 +251,10 @@ async function fillFormForEdit(id) {
       throw new Error(emp.message || "Employee not found");
     }
 
-    document.getElementById("empID").value = emp.empID;
-    document.getElementById("name").value = emp.name;
-    document.getElementById("department").value = emp.department;
-    document.getElementById("employmentType").value = emp.employmentType;
-    document.getElementById("daysPresent").value = emp.daysPresent;
-    document.getElementById("totalDays").value = emp.totalDays;
-    document.getElementById("leaveTaken").value = emp.leaveTaken;
-    document.getElementById("baseSalary").value = emp.baseSalary;
-    document.getElementById("overtimeHours").value = emp.overtimeHours;
-    document.getElementById("bonus").value = emp.bonus;
+    fillForm(emp);
+    editingEmployeeId = id;
 
-    showMessage("Employee loaded. Edit the fields and click Update.");
+    showMessage(`Editing employee ID ${id}. Update after making changes.`);
     activateMenuSection("dashboard");
   } catch (err) {
     showMessage(err.message || "Could not load employee.", true);
@@ -238,8 +265,13 @@ async function updateEmployee() {
   const data = getFormData();
   if (!validateEmployee(data)) return;
 
+  if (editingEmployeeId === null) {
+    showMessage("Please click Edit on an employee first.", true);
+    return;
+  }
+
   try {
-    const res = await fetch(`${API_BASE}/employees/${data.empID}`, {
+    const res = await fetch(`${API_BASE}/employees/${editingEmployeeId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -274,6 +306,10 @@ async function deleteEmployee(id) {
       throw new Error(result.message || "Failed to delete employee");
     }
 
+    if (editingEmployeeId === id) {
+      clearForm();
+    }
+
     showMessage(result.message || "Employee deleted successfully.");
     loadEmployees();
   } catch (err) {
@@ -296,7 +332,7 @@ Days Present: ${data.daysPresent}
 Total Days: ${data.totalDays}
 Leave Taken: ${data.leaveTaken}
 
-Base Salary: ${formatCurrency(data.baseSalary)}
+Basic Pay: ${formatCurrency(result.basicPay)}
 Bonus: ${formatCurrency(data.bonus)}
 Overtime Pay: ${formatCurrency(result.overtimePay)}
 Gross Salary: ${formatCurrency(result.grossSalary)}
@@ -344,8 +380,8 @@ function buildSlipHTML(data, result) {
               <span class="payslip-value">${data.employmentType}</span>
             </div>
             <div class="payslip-row">
-              <span class="payslip-label">Base Salary</span>
-              <span class="payslip-value">${formatCurrency(data.baseSalary)}</span>
+              <span class="payslip-label">Basic Pay</span>
+              <span class="payslip-value">${formatCurrency(result.basicPay)}</span>
             </div>
           </div>
 
@@ -374,8 +410,8 @@ function buildSlipHTML(data, result) {
           <div class="summary-box earnings-box">
             <h3>Earnings</h3>
             <div class="payslip-row">
-              <span class="payslip-label">Base Salary</span>
-              <span class="payslip-value">${formatCurrency(data.baseSalary)}</span>
+              <span class="payslip-label">Basic Pay</span>
+              <span class="payslip-value">${formatCurrency(result.basicPay)}</span>
             </div>
             <div class="payslip-row">
               <span class="payslip-label">Bonus</span>
@@ -494,6 +530,10 @@ function clearForm() {
   document.getElementById("baseSalary").value = "";
   document.getElementById("overtimeHours").value = "";
   document.getElementById("bonus").value = "";
+
+  editingEmployeeId = null;
+  currentSlipText = "";
+  currentSlipHTML = "";
 }
 
 function setActiveMenu(element) {
@@ -537,6 +577,7 @@ function activateMenuSection(sectionName) {
 }
 
 function showSection(section, element) {
+  clearMessage();
   setActiveMenu(element);
 
   if (section === "dashboard") {

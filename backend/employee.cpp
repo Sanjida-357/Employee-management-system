@@ -63,7 +63,6 @@ public:
 
     virtual ~Employee() {}
 
-    // Setters
     void setEmpID(int id) {
         if (id <= 0) throw InvalidInputException("Employee ID must be positive.");
         empID = id;
@@ -84,7 +83,6 @@ public:
         employeeType = type;
     }
 
-    // Function overloading
     void setBaseSalary(double salary) {
         if (salary < 0) throw InvalidInputException("Base salary cannot be negative.");
         baseSalary = salary;
@@ -95,7 +93,6 @@ public:
         baseSalary = static_cast<double>(salary);
     }
 
-    // Getters
     int getEmpID() const {
         return empID;
     }
@@ -116,7 +113,6 @@ public:
         return baseSalary;
     }
 
-    // Pure virtual functions for polymorphism
     virtual double calculateBasicPay() const = 0;
     virtual double getTaxRate() const = 0;
     virtual double getInsuranceRate() const = 0;
@@ -152,7 +148,7 @@ public:
         : Employee(id, n, dept, "Part-Time", salary) {}
 
     double calculateBasicPay() const override {
-        return baseSalary * 0.60;
+        return baseSalary;
     }
 
     double getTaxRate() const override {
@@ -160,11 +156,11 @@ public:
     }
 
     double getInsuranceRate() const override {
-        return 0.02;
+        return 0.0;
     }
 
     double getPensionRate() const override {
-        return 0.03;
+        return 0.0;
     }
 };
 
@@ -174,7 +170,7 @@ public:
         : Employee(id, n, dept, "Contract", salary) {}
 
     double calculateBasicPay() const override {
-        return baseSalary * 0.80;
+        return baseSalary;
     }
 
     double getTaxRate() const override {
@@ -182,11 +178,11 @@ public:
     }
 
     double getInsuranceRate() const override {
-        return 0.03;
+        return 0.0;
     }
 
     double getPensionRate() const override {
-        return 0.04;
+        return 0.0;
     }
 };
 
